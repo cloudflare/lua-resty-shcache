@@ -1,5 +1,4 @@
 -- Copyright (C) 2013 Matthieu Tourne
--- @author Matthieu Tourne <matthieu@cloudflare.com>
 
 -- small overlay over shdict, smart cache load mechanism
 
@@ -322,7 +321,7 @@ local function _unlock(self)
    end
 end
 
-local function _return(self, data, flags)
+local function _return(self, data)
    -- make sure we remove the locks if any before returning data
    _unlock(self)
 
@@ -522,12 +521,16 @@ local function load(self, key)
    -- perform external lookup
    local data, err, ttl = self.ext_lookup(self.ext_udata)
 
-   if data then
-      -- succ: save positive and return the data
-      _save_positive(self, key, data, ttl)
-      return _return(self, data)
+   if err then 
+      ngx.log(ngx.ERR, 'external lookup of ', key, ' failed: ', err)
    else
-      ngx.log(ngx.WARN, 'external lookup failed: ', err)
+       if data then
+           -- succ: save positive and return the data
+           _save_positive(self, key, data, ttl)
+           return _return(self, data)
+       else
+           ngx.log(ngx.ERR, 'external lookup of ', key, ' returned empty data')
+       end
    end
 
    -- external lookup failed
